@@ -77,7 +77,6 @@ from io import BytesIO
 from configparser import ConfigParser, Error as ConfigParserError
 json_loads = lambda s: json_lds(touni(s))
 callable = lambda x: hasattr(x, '__call__')
-imap = map
 
 def _raise(*a):
     raise a[0](a[1]).with_traceback(a[2])
@@ -973,7 +972,7 @@ class Bottle(object):
             new_iter = itertools.chain([first], iout)
         elif isinstance(first, str):
             encoder = lambda x: x.encode(response.charset)
-            new_iter = imap(encoder, itertools.chain([first], iout))
+            new_iter = map(encoder, itertools.chain([first], iout))
         else:
             msg = 'Unsupported response type: %s' % type(first)
             return self._cast(HTTPError(500, msg))
