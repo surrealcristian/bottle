@@ -33,33 +33,21 @@ from datetime import date as datedate, datetime, timedelta
 from tempfile import TemporaryFile
 from traceback import format_exc, print_exc
 from unicodedata import normalize
+from inspect import signature
 
-# inspect.getargspec was removed in Python 3.6, use
-# Signature-based version where we can (Python 3.3+)
-try:
-    from inspect import signature
-    def getargspec(func):
-        params = signature(func).parameters
-        args, varargs, keywords, defaults = [], None, None, []
-        for name, param in params.items():
-            if param.kind == param.VAR_POSITIONAL:
-                varargs = name
-            elif param.kind == param.VAR_KEYWORD:
-                keywords = name
-            else:
-                args.append(name)
-                if param.default is not param.empty:
-                    defaults.append(param.default)
-        return (args, varargs, keywords, tuple(defaults) or None)
-except ImportError:
-    try:
-        from inspect import getfullargspec
-        def getargspec(func):
-            spec = getfullargspec(func)
-            kwargs = makelist(spec[0]) + makelist(spec.kwonlyargs)
-            return kwargs, spec[1], spec[2], spec[3]
-    except ImportError:
-        from inspect import getargspec
+def getargspec(func):
+    params = signature(func).parameters
+    args, varargs, keywords, defaults = [], None, None, []
+    for name, param in params.items():
+        if param.kind == param.VAR_POSITIONAL:
+            varargs = name
+        elif param.kind == param.VAR_KEYWORD:
+            keywords = name
+        else:
+            args.append(name)
+            if param.default is not param.empty:
+                defaults.append(param.default)
+    return (args, varargs, keywords, tuple(defaults) or None)
 
 try:
     from simplejson import dumps as json_dumps, loads as json_lds
