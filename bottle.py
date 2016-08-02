@@ -93,9 +93,6 @@ def touni(s, enc='utf8', err='strict'):
         return str(s or ("" if s is None else s))
 
 
-tonat = touni
-
-
 # A bug in functools causes it to break if the wrapper is an instance method
 def update_wrapper(wrapper, wrapped, *a, **ka):
     try:
@@ -1191,7 +1188,7 @@ class BaseRequest(object):
                 if len(header) > bufsize: raise err
             size, _, _ = header.partition(sem)
             try:
-                maxread = int(tonat(size.strip()), 16)
+                maxread = int(touni(size.strip()), 16)
             except ValueError:
                 raise err
             if maxread == 0: break
@@ -1268,7 +1265,7 @@ class BaseRequest(object):
         # We default to application/x-www-form-urlencoded for everything that
         # is not multipart and take the fast path (also: 3.1 workaround)
         if not self.content_type.startswith('multipart/'):
-            pairs = _parse_qsl(tonat(self._get_body_string(), 'latin1'))
+            pairs = _parse_qsl(touni(self._get_body_string(), 'latin1'))
             for key, value in pairs:
                 post[key] = value
             return post
