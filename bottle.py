@@ -53,11 +53,6 @@ def getargspec(func):
 # We now try to fix 2.5/2.6/3.1/3.2 incompatibilities.
 # It ain't pretty but it works... Sorry for the mess.
 
-py = sys.version_info
-py3k = py >= (3, 0, 0)
-py25 = py <  (2, 6, 0)
-py31 = (3, 1, 0) <= py < (3, 2, 0)
-
 # Workaround for the missing "as" keyword in py3k.
 def _e():
     return sys.exc_info()[1]
@@ -80,8 +75,6 @@ from collections import MutableMapping as DictMixin
 import pickle
 from io import BytesIO
 from configparser import ConfigParser, Error as ConfigParserError
-basestring = str
-unicode = str
 json_loads = lambda s: json_lds(touni(s))
 callable = lambda x: hasattr(x, '__call__')
 imap = map
@@ -91,14 +84,14 @@ def _raise(*a):
 
 # Some helpers for string/byte handling
 def tob(s, enc='utf8'):
-    return s.encode(enc) if isinstance(s, unicode) else bytes(s)
+    return s.encode(enc) if isinstance(s, str) else bytes(s)
 
 
 def touni(s, enc='utf8', err='strict'):
     if isinstance(s, bytes):
         return s.decode(enc, err)
     else:
-        return unicode(s or ("" if s is None else s))
+        return str(s or ("" if s is None else s))
 
 
 tonat = touni
@@ -829,7 +822,7 @@ class Bottle(object):
         skiplist = makelist(skip)
 
         def decorator(callback):
-            if isinstance(callback, basestring): callback = load(callback)
+            if isinstance(callback, str): callback = load(callback)
             for rule in makelist(path) or yieldroutes(callback):
                 for verb in makelist(method):
                     verb = verb.upper()
@@ -929,10 +922,10 @@ class Bottle(object):
             return []
         # Join lists of byte or unicode strings. Mixed lists are NOT supported
         if isinstance(out, (tuple, list))\
-        and isinstance(out[0], (bytes, unicode)):
+        and isinstance(out[0], (bytes, str)):
             out = out[0][0:0].join(out)  # b'abc'[0:0] -> b''
         # Encode unicode strings
-        if isinstance(out, unicode):
+        if isinstance(out, str):
             out = out.encode(response.charset)
         # Byte Strings are just returned
         if isinstance(out, bytes):
@@ -978,7 +971,7 @@ class Bottle(object):
             return self._cast(first)
         elif isinstance(first, bytes):
             new_iter = itertools.chain([first], iout)
-        elif isinstance(first, unicode):
+        elif isinstance(first, str):
             encoder = lambda x: x.encode(response.charset)
             new_iter = imap(encoder, itertools.chain([first], iout))
         else:
@@ -1613,7 +1606,7 @@ class BaseResponse(object):
         return self._headers[_hkey(name)][-1]
 
     def __setitem__(self, name, value):
-        self._headers[_hkey(name)] = [value if isinstance(value, unicode) else
+        self._headers[_hkey(name)] = [value if isinstance(value, str) else
                                       str(value)]
 
     def get_header(self, name, default=None):
@@ -1624,13 +1617,13 @@ class BaseResponse(object):
     def set_header(self, name, value):
         """ Create a new response header, replacing any previously defined
             headers with the same name. """
-        self._headers[_hkey(name)] = [value if isinstance(value, unicode)
+        self._headers[_hkey(name)] = [value if isinstance(value, str)
                                             else str(value)]
 
     def add_header(self, name, value):
         """ Add an additional response header, not removing duplicates. """
         self._headers.setdefault(_hkey(name), []).append(
-            value if isinstance(value, unicode) else str(value))
+            value if isinstance(value, str) else str(value))
 
     def iter_headers(self):
         """ Yield (header, value) tuples, skipping headers that are not
@@ -1705,7 +1698,7 @@ class BaseResponse(object):
 
         if secret:
             value = touni(cookie_encode((name, value), secret))
-        elif not isinstance(value, basestring):
+        elif not isinstance(value, str):
             raise TypeError('Secret key missing for non-string Cookie.')
 
         # Cookie size plus options must not exceed 4kb.
@@ -2004,7 +1997,7 @@ class FormsDict(MultiDict):
     recode_unicode = True
 
     def _fix(self, s, encoding=None):
-        if isinstance(s, unicode) and self.recode_unicode:  # Python 3 WSGI
+        if isinstance(s, str) and self.recode_unicode:  # Python 3 WSGI
             return s.encode('latin1').decode(encoding or self.input_encoding)
         elif isinstance(s, bytes):  # Python 2 WSGI
             return s.decode(encoding or self.input_encoding)
@@ -2029,7 +2022,7 @@ class FormsDict(MultiDict):
         except (UnicodeError, KeyError):
             return default
 
-    def __getattr__(self, name, default=unicode()):
+    def __getattr__(self, name, default=str()):
         # Without this guard, pickle generates a cryptic TypeError:
         if name.startswith('__') and name.endswith('__'):
             return super(FormsDict, self).__getattr__(name)
@@ -2054,15 +2047,15 @@ class HeaderDict(MultiDict):
         return self.dict[_hkey(key)][-1]
 
     def __setitem__(self, key, value):
-        self.dict[_hkey(key)] = [value if isinstance(value, unicode) else
+        self.dict[_hkey(key)] = [value if isinstance(value, str) else
                                  str(value)]
 
     def append(self, key, value):
         self.dict.setdefault(_hkey(key), []).append(
-            value if isinstance(value, unicode) else str(value))
+            value if isinstance(value, str) else str(value))
 
     def replace(self, key, value):
-        self.dict[_hkey(key)] = [value if isinstance(value, unicode) else
+        self.dict[_hkey(key)] = [value if isinstance(value, str) else
                                  str(value)]
 
     def getall(self, key):
@@ -2107,7 +2100,7 @@ class WSGIHeaderDict(DictMixin):
 
     def __getitem__(self, key):
         val = self.environ[self._ekey(key)]
-        if isinstance(val, unicode):
+        if isinstance(val, str):
             val = val.encode('latin1').decode('utf8')
         else:
             val = val.decode('utf8')
@@ -2189,7 +2182,7 @@ class ConfigDict(dict):
             {'some.namespace.key': 'value'}
         """
         for key, value in source.items():
-            if isinstance(key, basestring):
+            if isinstance(key, str):
                 nskey = (namespace + '.' + key).strip('.')
                 if isinstance(value, dict):
                     self.load_dict(value, namespace=nskey)
@@ -2204,7 +2197,7 @@ class ConfigDict(dict):
             namespace. Apart from that it works just as the usual dict.update().
             Example: ``update('some.namespace', key='value')`` """
         prefix = ''
-        if a and isinstance(a[0], basestring):
+        if a and isinstance(a[0], str):
             prefix = a[0].strip('.') + '.'
             a = a[1:]
         for key, value in dict(*a, **ka).items():
@@ -2216,7 +2209,7 @@ class ConfigDict(dict):
         return self[key]
 
     def __setitem__(self, key, value):
-        if not isinstance(key, basestring):
+        if not isinstance(key, str):
             raise TypeError('Key has type %r (not a string)' % type(key))
 
         value = self.meta_get(key, 'filter', lambda x: x)(value)
@@ -2437,7 +2430,7 @@ class FileUpload(object):
             or dashes are removed. The filename is limited to 255 characters.
         """
         fname = self.raw_filename
-        if not isinstance(fname, unicode):
+        if not isinstance(fname, str):
             fname = fname.decode('utf8', 'ignore')
         fname = normalize('NFKD', fname)
         fname = fname.encode('ASCII', 'ignore').decode('ASCII')
@@ -2463,7 +2456,7 @@ class FileUpload(object):
             :param overwrite: If True, replace existing files. (default: False)
             :param chunk_size: Bytes to read at a time. (default: 64kb)
         """
-        if isinstance(destination, basestring):  # Except file-likes here
+        if isinstance(destination, str):  # Except file-likes here
             if os.path.isdir(destination):
                 destination = os.path.join(destination, self.filename)
             if not overwrite and os.path.exists(destination):
@@ -2627,7 +2620,7 @@ def http_date(value):
         value = value.utctimetuple()
     elif isinstance(value, (int, float)):
         value = time.gmtime(value)
-    if not isinstance(value, basestring):
+    if not isinstance(value, str):
         value = time.strftime("%a, %d %b %Y %H:%M:%S GMT", value)
     return value
 
@@ -3316,13 +3309,13 @@ def run(app=None,
     try:
         if debug is not None: _debug(debug)
         app = app or default_app()
-        if isinstance(app, basestring):
+        if isinstance(app, str):
             app = load_app(app)
         if not callable(app):
             raise ValueError("Application is not callable: %r" % app)
 
         for plugin in plugins or []:
-            if isinstance(plugin, basestring):
+            if isinstance(plugin, str):
                 plugin = load(plugin)
             app.install(plugin)
 
@@ -3331,7 +3324,7 @@ def run(app=None,
 
         if server in server_names:
             server = server_names.get(server)
-        if isinstance(server, basestring):
+        if isinstance(server, str):
             server = load(server)
         if isinstance(server, type):
             server = server(host=host, port=port, **kargs)
