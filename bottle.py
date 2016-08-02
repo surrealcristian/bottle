@@ -21,48 +21,6 @@ __version__ = '0.13-dev'
 __license__ = 'MIT'
 
 ###############################################################################
-# Command-line interface ########################################################
-###############################################################################
-# INFO: Some server adapters need to monkey-patch std-lib modules before they
-# are imported. This is why some of the command-line handling is done here, but
-# the actual call to main() is at the end of the file.
-
-
-def _cli_parse(args):
-    from optparse import OptionParser
-    parser = OptionParser(
-        usage="usage: %prog [options] package.module:app")
-    opt = parser.add_option
-    opt("--version", action="store_true", help="show version number.")
-    opt("-b", "--bind", metavar="ADDRESS", help="bind socket to ADDRESS.")
-    opt("-s", "--server", default='wsgiref', help="use SERVER as backend.")
-    opt("-p", "--plugin", action="append", help="install additional plugin/s.")
-    opt("-c", "--conf", action="append", metavar="FILE",
-        help="load config values from FILE.")
-    opt("-C", "--param", action="append", metavar="NAME=VALUE",
-        help="override config values.")
-    opt("--debug", action="store_true", help="start server in debug mode.")
-    opt("--reload", action="store_true", help="auto-reload on file changes.")
-    opts, args = parser.parse_args(args[1:])
-
-    return opts, args, parser
-
-
-def _cli_patch(args):
-    opts, _, _ = _cli_parse(args)
-    if opts.server:
-        if opts.server.startswith('gevent'):
-            import gevent.monkey
-            gevent.monkey.patch_all()
-        elif opts.server.startswith('eventlet'):
-            import eventlet
-            eventlet.monkey_patch()
-
-
-if __name__ == '__main__':
-    _cli_patch(sys.argv)
-
-###############################################################################
 # Imports and Python 2/3 unification ###########################################
 ###############################################################################
 
@@ -4121,59 +4079,5 @@ apps = app = default_app = AppStack()
 ext = _ImportRedirect('bottle.ext' if __name__ == '__main__' else
                       __name__ + ".ext", 'bottle_%s').module
 
-
-
-if __name__ == '__main__':
-    opt, args, parser = _cli_parse(sys.argv)
-
-    def _cli_error(msg):
-        parser.print_help()
-        _stderr('\nError: %s\n' % msg)
-        sys.exit(1)
-
-    if opt.version:
-        _stdout('Bottle %s\n' % __version__)
-        sys.exit(0)
-    if not args:
-        _cli_error("No application entry point specified.")
-
-    sys.path.insert(0, '.')
-    sys.modules.setdefault('bottle', sys.modules['__main__'])
-
-    host, port = (opt.bind or 'localhost'), 8080
-    if ':' in host and host.rfind(']') < host.rfind(':'):
-        host, port = host.rsplit(':', 1)
-    host = host.strip('[]')
-
-    config = ConfigDict()
-
-    for cfile in opt.conf or []:
-        try:
-            if cfile.endswith('.json'):
-                with open(cfile, 'rb') as fp:
-                    config.load_dict(json_loads(fp.read()))
-            else:
-                config.load_config(cfile)
-        except ConfigParserError:
-            _cli_error(str(_e()))
-        except IOError:
-            _cli_error("Unable to read config file %r" % cfile)
-        except (UnicodeError, TypeError, ValueError):
-            _cli_error("Unable to parse config file %r: %s" % (cfile, _e()))
-
-    for cval in opt.param or []:
-        if '=' in cval:
-            config.update((cval.split('=', 1),))
-        else:
-            config[cval] = True
-
-    run(args[0],
-        host=host,
-        port=int(port),
-        server=opt.server,
-        reloader=opt.reload,
-        plugins=opt.plugin,
-        debug=opt.debug,
-        config=config)
 
 # THE END
