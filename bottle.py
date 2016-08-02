@@ -511,8 +511,8 @@ class Route(object):
         """ Return the callback. If the callback is a decorated function, try to
             recover the original function. """
         func = self.callback
-        func = getattr(func, '__func__' if py3k else 'im_func', func)
-        closure_attr = '__closure__' if py3k else 'func_closure'
+        func = getattr(func, '__func__', func)
+        closure_attr = '__closure__'
         while hasattr(func, closure_attr) and getattr(func, closure_attr):
             attributes = getattr(func, closure_attr)
             func = attributes[0].cell_contents
@@ -876,8 +876,7 @@ class Bottle(object):
 
     def _handle(self, environ):
         path = environ['bottle.raw_path'] = environ['PATH_INFO']
-        if py3k:
-            environ['PATH_INFO'] = path.encode('latin1').decode('utf8', 'ignore')
+        environ['PATH_INFO'] = path.encode('latin1').decode('utf8', 'ignore')
 
         def _inner_handle():
             # Maybe pass variables as locals for better performance? 
@@ -1286,12 +1285,7 @@ class BaseRequest(object):
         for key in ('REQUEST_METHOD', 'CONTENT_TYPE', 'CONTENT_LENGTH'):
             if key in self.environ: safe_env[key] = self.environ[key]
         args = dict(fp=self.body, environ=safe_env, keep_blank_values=True)
-        if py31:
-            args['fp'] = NCTextIOWrapper(args['fp'],
-                                         encoding='utf8',
-                                         newline='\n')
-        elif py3k:
-            args['encoding'] = 'utf8'
+        args['encoding'] = 'utf8'
         data = cgi.FieldStorage(**args)
         self['_cgi.FieldStorage'] = data  #http://bugs.python.org/issue18394
         data = data.list or []
@@ -1657,11 +1651,7 @@ class BaseResponse(object):
         if self._cookies:
             for c in self._cookies.values():
                 out.append(('Set-Cookie', c.OutputString()))
-        if py3k:
-            return [(k, v.encode('utf8').decode('latin1')) for (k, v) in out]
-        else:
-            return [(k, v.encode('utf8') if isinstance(v, unicode) else v)
-                    for (k, v) in out]
+        return [(k, v.encode('utf8').decode('latin1')) for (k, v) in out]
 
     content_type = HeaderProperty('Content-Type')
     content_length = HeaderProperty('Content-Length', reader=int)
@@ -1951,44 +1941,19 @@ class MultiDict(DictMixin):
     def keys(self):
         return self.dict.keys()
 
-    if py3k:
+    def values(self):
+        return (v[-1] for v in self.dict.values())
 
-        def values(self):
-            return (v[-1] for v in self.dict.values())
+    def items(self):
+        return ((k, v[-1]) for k, v in self.dict.items())
 
-        def items(self):
-            return ((k, v[-1]) for k, v in self.dict.items())
+    def allitems(self):
+        return ((k, v) for k, vl in self.dict.items() for v in vl)
 
-        def allitems(self):
-            return ((k, v) for k, vl in self.dict.items() for v in vl)
-
-        iterkeys = keys
-        itervalues = values
-        iteritems = items
-        iterallitems = allitems
-
-    else:
-
-        def values(self):
-            return [v[-1] for v in self.dict.values()]
-
-        def items(self):
-            return [(k, v[-1]) for k, v in self.dict.items()]
-
-        def iterkeys(self):
-            return self.dict.iterkeys()
-
-        def itervalues(self):
-            return (v[-1] for v in self.dict.itervalues())
-
-        def iteritems(self):
-            return ((k, v[-1]) for k, v in self.dict.iteritems())
-
-        def iterallitems(self):
-            return ((k, v) for k, vl in self.dict.iteritems() for v in vl)
-
-        def allitems(self):
-            return [(k, v) for k, vl in self.dict.iteritems() for v in vl]
+    iterkeys = keys
+    itervalues = values
+    iteritems = items
+    iterallitems = allitems
 
     def get(self, key, default=None, index=-1, type=None):
         """ Return the most recent value for a key.
@@ -2142,11 +2107,10 @@ class WSGIHeaderDict(DictMixin):
 
     def __getitem__(self, key):
         val = self.environ[self._ekey(key)]
-        if py3k:
-            if isinstance(val, unicode):
-                val = val.encode('latin1').decode('utf8')
-            else:
-                val = val.decode('utf8')
+        if isinstance(val, unicode):
+            val = val.encode('latin1').decode('utf8')
+        else:
+            val = val.decode('utf8')
         return val
 
     def __setitem__(self, key, value):
