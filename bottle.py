@@ -70,53 +70,24 @@ except IOError:
     _stdout = lambda x: sys.stdout.write(x)
     _stderr = lambda x: sys.stderr.write(x)
 
-# Lots of stdlib and builtin differences.
-if py3k:
-    import http.client as httplib
-    import _thread as thread
-    from urllib.parse import urljoin, SplitResult as UrlSplitResult
-    from urllib.parse import urlencode, quote as urlquote, unquote as urlunquote
-    urlunquote = functools.partial(urlunquote, encoding='latin1')
-    from http.cookies import SimpleCookie
-    from collections import MutableMapping as DictMixin
-    import pickle
-    from io import BytesIO
-    from configparser import ConfigParser, Error as ConfigParserError
-    basestring = str
-    unicode = str
-    json_loads = lambda s: json_lds(touni(s))
-    callable = lambda x: hasattr(x, '__call__')
-    imap = map
+import http.client as httplib
+import _thread as thread
+from urllib.parse import urljoin, SplitResult as UrlSplitResult
+from urllib.parse import urlencode, quote as urlquote, unquote as urlunquote
+urlunquote = functools.partial(urlunquote, encoding='latin1')
+from http.cookies import SimpleCookie
+from collections import MutableMapping as DictMixin
+import pickle
+from io import BytesIO
+from configparser import ConfigParser, Error as ConfigParserError
+basestring = str
+unicode = str
+json_loads = lambda s: json_lds(touni(s))
+callable = lambda x: hasattr(x, '__call__')
+imap = map
 
-    def _raise(*a):
-        raise a[0](a[1]).with_traceback(a[2])
-else:  # 2.x
-    import httplib
-    import thread
-    from urlparse import urljoin, SplitResult as UrlSplitResult
-    from urllib import urlencode, quote as urlquote, unquote as urlunquote
-    from Cookie import SimpleCookie
-    from itertools import imap
-    import cPickle as pickle
-    from StringIO import StringIO as BytesIO
-    from ConfigParser import SafeConfigParser as ConfigParser, \
-                             Error as ConfigParserError
-    if py25:
-        from UserDict import DictMixin
-
-        def next(it):
-            return it.next()
-
-        bytes = str
-    else:  # 2.6, 2.7
-        from collections import MutableMapping as DictMixin
-    unicode = unicode
-    json_loads = json_lds
-    eval(compile('def _raise(*a): raise a[0], a[1], a[2]', '<py3fix>', 'exec'))
-
-if py25 or py31:
-    msg = "Python 2.5 and 3.1 support will be dropped in future versions of Bottle."
-    warnings.warn(msg, DeprecationWarning)
+def _raise(*a):
+    raise a[0](a[1]).with_traceback(a[2])
 
 # Some helpers for string/byte handling
 def tob(s, enc='utf8'):
@@ -130,16 +101,7 @@ def touni(s, enc='utf8', err='strict'):
         return unicode(s or ("" if s is None else s))
 
 
-tonat = touni if py3k else tob
-
-# 3.2 fixes cgi.FieldStorage to accept bytes (which makes a lot of sense).
-# 3.1 needs a workaround.
-if py31:
-    from io import TextIOWrapper
-
-    class NCTextIOWrapper(TextIOWrapper):
-        def close(self):
-            pass  # Keep wrapped buffer open.
+tonat = touni
 
 
 # A bug in functools causes it to break if the wrapper is an instance method
