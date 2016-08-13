@@ -78,11 +78,7 @@ def _e():
 
 # Workaround for the "print is a keyword/function" Python 2/3 dilemma
 # and a fallback for mod_wsgi (resticts stdout/err attribute access)
-try:
-    _stdout, _stderr = sys.stdout.write, sys.stderr.write
-except IOError:
-    _stdout = lambda x: sys.stdout.write(x)
-    _stderr = lambda x: sys.stderr.write(x)
+_stdout = sys.stdout.write
 
 
 urlunquote = functools.partial(urlunquote, encoding='latin1')
@@ -182,19 +178,6 @@ class cached_property(object):
         value = obj.__dict__[self.func.__name__] = self.func(obj)
         return value
 
-
-class lazy_attribute(object):
-    """ A property that caches itself to the class object. """
-
-    def __init__(self, func):
-        functools.update_wrapper(self, func, updated=[])
-        self.getter = func
-
-    def __get__(self, obj, cls):
-        value = self.getter(cls)
-        setattr(cls, self.__name__, value)
-        return value
-
 ###############################################################################
 # Exceptions and Events #######################################################
 ###############################################################################
@@ -216,11 +199,6 @@ class RouteError(BottleException):
 class RouteReset(BottleException):
     """ If raised by a plugin or request handler, the route is reset and all
         plugins are re-applied. """
-
-
-class RouterUnknownModeError(RouteError):
-
-    pass
 
 
 class RouteSyntaxError(RouteError):
