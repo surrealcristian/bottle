@@ -35,7 +35,7 @@ import warnings
 from types import FunctionType
 from datetime import date as datedate, datetime, timedelta
 from tempfile import TemporaryFile
-from traceback import format_exc, print_exc
+from traceback import format_exc
 from unicodedata import normalize
 from inspect import signature
 from json import dumps as json_dumps, loads as json_lds
@@ -44,7 +44,7 @@ from urllib.parse import urlencode, quote as urlquote, unquote as urlunquote
 from http.cookies import SimpleCookie
 from collections import MutableMapping as DictMixin
 from io import BytesIO
-from configparser import ConfigParser, Error as ConfigParserError
+from configparser import ConfigParser
 
 
 __author__ = 'Marcel Hellkamp'
