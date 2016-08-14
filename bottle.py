@@ -555,14 +555,12 @@ class Bottle(object):
                          let debugging middleware handle exceptions.
     """
 
-    def __init__(self, catchall=True, autojson=True):
+    def __init__(self, catchall=True):
         #: A :class:`ConfigDict` for app specific configuration.
         self.config = ConfigDict()
         self.config._add_change_listener(functools.partial(self.trigger_hook, 'config'))
-        self.config.meta_set('autojson', 'validate', bool)
         self.config.meta_set('catchall', 'validate', bool)
         self.config['catchall'] = catchall
-        self.config['autojson'] = autojson
 
         self._mounts = []
 
@@ -575,8 +573,6 @@ class Bottle(object):
 
         # Core plugins
         self.plugins = []  # List of installed plugins.
-        if self.config['autojson']:
-            self.install(JSONPlugin())
         self.install(TemplatePlugin())
 
     #: If true, most exceptions are caught and returned as :exc:`HTTPError`
@@ -1846,38 +1842,6 @@ class HTTPError(HTTPResponse):
 
 class PluginError(BottleException):
     pass
-
-
-class JSONPlugin(object):
-    name = 'json'
-    api = 2
-
-    def __init__(self, json_dumps=json_dumps):
-        self.json_dumps = json_dumps
-
-    def apply(self, callback, _):
-        dumps = self.json_dumps
-        if not dumps:
-            return callback
-
-        def wrapper(*a, **ka):
-            try:
-                rv = callback(*a, **ka)
-            except HTTPError:
-                rv = _e()
-
-            if isinstance(rv, dict):
-                # Attempt to serialize, raises exception on failure
-                json_response = dumps(rv)
-                # Set content type only if serialization successful
-                response.content_type = 'application/json'
-                return json_response
-            elif isinstance(rv, HTTPResponse) and isinstance(rv.body, dict):
-                rv.body = dumps(rv.body)
-                rv.content_type = 'application/json'
-            return rv
-
-        return wrapper
 
 
 class TemplatePlugin(object):
